@@ -1,0 +1,5 @@
+<!-- Bivalent Switchover Symbol -->
+<g transform="translate(50, 20)">
+    <path d="M -4 -4 L 4 -4 M 4 -4 L 2 -6 M 4 -4 L 2 -2" fill="none" stroke="#2C3E50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 4 4 L -4 4 M -4 4 L -2 6 M -4 4 L -2 2" fill="none" stroke="#2C3E50" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+</g>

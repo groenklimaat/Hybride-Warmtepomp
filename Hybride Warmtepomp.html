@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+<title>U-waarde Bepaler · Warmteverlies & Warmtepomp Optimalisatie</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><polygon points='32,5 3,28 61,28' fill='%232c9c6e'/><rect x='9' y='28' width='46' height='31' fill='%231f6e8c'/><rect x='13' y='33' width='10' height='10' rx='1' fill='%23e2f0f7'/><rect x='30' y='38' width='21' height='17' rx='3' fill='%23e2f0f7'/><circle cx='40.5' cy='46.5' r='6' fill='%23bdd9e8'/><circle cx='40.5' cy='46.5' r='2' fill='%231f6e8c'/><path d='M13 52 Q16 49 19 52 Q22 55 25 52' stroke='%23ff9f4a' stroke-width='2' fill='none' stroke-linecap='round'/></svg>">
+<style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, system-ui, sans-serif; }
+    body { background: #e2f0f7; margin: 0; padding: 24px 16px; }
+    .container { max-width: 1400px; margin: 0 auto; }
+
+    /* ---------- HEADER ---------- */
+    .header {
+        display: flex; flex-wrap: wrap; align-items: center;
+        justify-content: space-between; gap: 14px; margin-bottom: 1.2rem;
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .logo { flex-shrink: 0; width: 48px; height: 48px; filter: drop-shadow(0 3px 6px rgba(0,40,55,.18)); }
+    h1 {
+        font-size: 1.9rem; font-weight: 700;
+        background: linear-gradient(135deg, #003952, #1f6e8c);
+        background-clip: text; -webkit-background-clip: text;
+        color: transparent; margin: 0;
+    }
+    .header-right { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .badge {
+        background: #1f6e8c; padding: 6px 16px; border-radius: 60px;
+        color: white; font-size: 0.85rem; font-weight: 500;
+    }
+
+    /* ---------- LANGUAGE SWITCH ---------- */
+    .lang-switch {
+        display: inline-flex; background: #fff; border-radius: 40px;
+        padding: 4px; gap: 4px; box-shadow: 0 2px 8px rgba(0,40,55,.08);
+    }
+    .lang-switch button {
+        border: none; background: transparent; padding: 6px 14px;
+        border-radius: 40px; cursor: pointer; font-weight: 700;
+        color: #1f6e8c; font-size: 0.85rem; transition: background .2s, color .2s;
+    }
+    .lang-switch button.active { background: #1f6e8c; color: #fff; }
+
+    /* ---------- INDEX NAV ---------- */
+    .index-nav {
+        display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+        margin-bottom: 24px; background: rgba(255,255,255,0.65);
+        padding: 12px 20px; border-radius: 40px;
+        box-shadow: 0 6px 16px rgba(0,40,55,.06);
+    }
+    .index-nav a {
+        color: #1f6e8c; text-decoration: none; font-weight: 600;
+        font-size: 0.85rem; padding: 6px 14px; border-radius: 40px;
+        background: #e2f0f7; transition: background .2s;
+    }
+    .index-nav a:hover { background: #cbe3f0; }
+
+    /* ---------- LAYOUT ---------- */
+    .grid-main { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+    @media (max-width: 950px) { .grid-main { grid-template-columns: 1fr; } }
+
+    .card {
+        background: rgba(255,255,255,0.92); backdrop-filter: blur(2px);
+        border-radius: 40px; padding: 1.6rem 1.8rem;
+        box-shadow: 0 12px 28px rgba(0,40,55,0.12);
+        border: 1px solid rgba(255,255,255,0.7);
+        scroll-margin-top: 20px;
+    }
+    .card h2 {
+        margin-top: 0; color: #003952; font-weight: 600; font-size: 1.5rem;
+        display: flex; align-items: center; gap: 10px;
+        border-left: 5px solid #2c9c6e; padding-left: 18px;
+    }
+    .u-row {
+        display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 20px;
+        background: #eff7fc; padding: 16px 20px; border-radius: 32px;
+        align-items: flex-end;
+    }
+    .u-field { flex: 1; min-width: 140px; }
+    .u-field label { font-weight: 600; color: #0f526d; display: block; margin-bottom: 5px; font-size: 0.85rem; }
+    .u-field input {
+        width: 100%; padding: 10px 14px; border-radius: 40px;
+        border: 1px solid #bdd9e8; background: #fff; font-weight: 500; font-size: 1rem;
+    }
+    .opp-row { background: #e0f0f9; border-radius: 32px; padding: 18px 20px; margin-bottom: 24px; }
+    .opp-slider { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; }
+    .opp-slider div { flex: 1; }
+    input[type="range"] { width: 100%; }
+
+    .result-kw {
+        background: #003952; color: #fff; border-radius: 48px;
+        padding: 1rem 1.8rem; text-align: center; margin: 24px 0 16px;
+    }
+    .kw-number { font-size: 2.8rem; font-weight: 800; line-height: 1; }
+
+    .beta-section { background: #f0f6fa; border-radius: 32px; padding: 20px; margin: 20px 0; }
+    .beta-slider { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+    .beta-slider input { flex: 2; }
+    .balance-point {
+        background: #ffe6cf; border-radius: 28px; padding: 12px 20px;
+        margin-top: 20px; text-align: center; font-weight: bold;
+    }
+    canvas {
+        width: 100%; background: #fff; border-radius: 24px; margin-top: 12px;
+        box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+    }
+    .print-btn {
+        background: #1f6e8c; border: none; color: #fff; padding: 8px 24px;
+        border-radius: 40px; cursor: pointer; font-weight: 600;
+    }
+    .info-note { font-size: 0.8rem; color: #2c5a6e; margin-top: 1rem; text-align: center; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+
+    @media print {
+        body { background: #fff; padding: 0; }
+        .card { box-shadow: none; background: #fff; }
+        .print-btn, .lang-switch, .index-nav { display: none; }
+        .badge { background: #aaa; }
+    }
+</style>
+</head>
+<body>
+<div class="container">
+
+    <!-- ============ HEADER ============ -->
+    <div class="header">
+        <div class="header-left">
+            <!-- SVG logo: house + heat pump -->
+            <svg class="logo" viewBox="0 0 64 64" aria-hidden="true">
+                <polygon points="32,5 3,28 61,28" fill="#2c9c6e"/>
+                <rect x="9" y="28" width="46" height="31" fill="#1f6e8c"/>
+                <rect x="13" y="33" width="10" height="10" rx="1" fill="#e2f0f7" opacity="0.9"/>
+                <rect x="30" y="38" width="21" height="17" rx="3" fill="#e2f0f7"/>
+                <circle cx="40.5" cy="46.5" r="6" fill="#bdd9e8"/>
+                <circle cx="40.5" cy="46.5" r="2" fill="#1f6e8c"/>
+                <path d="M13 52 Q16 49 19 52 Q22 55 25 52" stroke="#ff9f4a" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </svg>
+            <h1 data-i18n="mainTitle">U-waarde Bepaler · Warmteverlies &amp; Warmtepomp optimalisatie</h1>
+        </div>
+        <div class="header-right">
+            <div class="lang-switch" role="group" aria-label="Language / Taal">
+                <button type="button" data-lang="nl" class="active">NL</button>
+                <button type="button" data-lang="en">EN</button>
+            </div>
+            <button class="print-btn" onclick="window.print()" data-i18n="printBtn">🖨️ PDF / Afdrukken</button>
+            <div class="badge" data-i18n="badge">zelf U-waarden invoeren</div>
+        </div>
+    </div>
+
+    <!-- ============ INDEX / QUICK NAV ============ -->
+    <nav class="index-nav" aria-label="Index">
+        <a href="#section-elements" data-i18n="navElements">1. Bouwdelen &amp; U-waarden</a>
+        <a href="#section-areas"    data-i18n="navAreas">2. Oppervlaktes</a>
+        <a href="#section-results"  data-i18n="navResults">3. Warmteverlies</a>
+        <a href="#section-beta"     data-i18n="navBeta">4. β &amp; Warmtepomp</a>
+        <a href="#section-chart"    data-i18n="navChart">5. Grafiek &amp; dekking</a>
+    </nav>
+
+    <div class="grid-main">
+
+        <!-- ============ LEFT CARD ============ -->
+        <div class="card">
+            <h2 id="section-elements" data-i18n="sectionElements">📐 1. Bouwdelen &amp; U-waarden (W/m²K)</h2>
+            <div class="u-row">
+                <div class="u-field"><label data-i18n="labelWall">🏛️ Gevels / muren</label><input type="number" id="u_wall" step="0.01" value="0.45" placeholder="U-value"></div>
+                <div class="u-field"><label data-i18n="labelWindow">🪟 Ramen &amp; deuren</label><input type="number" id="u_window" step="0.01" value="1.6" placeholder="U-value"></div>
+                <div class="u-field"><label data-i18n="labelRoof">🏠 Dak / plafond</label><input type="number" id="u_roof" step="0.01" value="0.35" placeholder="U-value"></div>
+                <div class="u-field"><label data-i18n="labelFloor">🌍 Vloer / begane grond</label><input type="number" id="u_floor" step="0.01" value="0.50" placeholder="U-value"></div>
+            </div>
+
+            <h2 id="section-areas" data-i18n="sectionAreas">📏 2. Oppervlaktes (m²)</h2>
+            <div class="opp-row">
+                <div class="opp-slider">
+                    <div><label data-i18n="labelAreaWall">Gevels totaal (m²)</label><input type="number" id="area_wall" value="120" step="5"></div>
+                    <div><label data-i18n="labelAreaWindow">Ramen + deuren (m²)</label><input type="number" id="area_window" value="28" step="2"></div>
+                    <div><label data-i18n="labelAreaRoof">Dak / zolder (m²)</label><input type="number" id="area_roof" value="85" step="5"></div>
+                    <div><label data-i18n="labelAreaFloor">Vloer (m²)</label><input type="number" id="area_floor" value="85" step="5"></div>
+                </div>
+                <div class="flex-between" style="margin-top: 18px;">
+                    <span><strong data-i18n="labelInfiltration">💨 Infiltratie / ventilatieverlies:</strong></span>
+                    <span style="background: #fff; padding: 6px 14px; border-radius: 60px;">
+                        <input type="number" id="infiltration" value="0.15" step="0.01" style="width: 80px; text-align: center;"> kW/K
+                    </span>
+                </div>
+                <div class="info-note" style="margin-top: 12px;" data-i18n="tipInfiltration">Tip: typische infiltratie 0.10 - 0.25 kW/K voor matig tot goede luchtdichtheid.</div>
+            </div>
+
+            <div class="result-kw" id="section-results">
+                <div style="font-size: 1rem;" data-i18n="totalLossLabel">💥 Totaal transmissie + ventilatie verlies</div>
+                <div class="kw-number" id="totalHeatLossKw">0.00</div>
+                <div data-i18n="deltaTLabel">kW bij ΔT = 31K (binnen 21°C / buiten -10°C)</div>
+            </div>
+
+            <div class="beta-section" id="section-beta">
+                <div class="flex-between">
+                    <strong data-i18n="betaLabel">🔹 β-factor (Warmtepompvermogen / Warmteverlies)</strong>
+                    <span id="betaValueDisplay">0.45</span>
+                </div>
+                <div class="beta-slider">
+                    <span>0.2</span>
+                    <input type="range" id="betaSlider" min="0.2" max="1.0" step="0.01" value="0.45">
+                    <span>1.0</span>
+                </div>
+                <div style="margin-top: 12px;">
+                    <strong data-i18n="selectedCapacity">⚙️ Gekozen WP vermogen:</strong>
+                    <span id="wpCapacitySpan">0.00</span> kW
+                </div>
+                <div class="balance-point">
+                    <span data-i18n="balancePointLabel">⚖️ Kantelpunt (buitentemp waar WP = verlies):</span>
+                    <strong id="balanceTemp">--</strong> °C
+                </div>
+                <div class="info-note" data-i18n="balanceNote">Kantelpunt lager = meer verwarming door warmtepomp, minder back-up.</div>
+            </div>
+        </div>
+
+        <!-- ============ RIGHT CARD ============ -->
+        <div class="card">
+            <h2 id="section-chart" data-i18n="sectionChart">📈 Stooklijn &amp; bivalent gedrag</h2>
+            <canvas id="heatCurveCanvas" width="500" height="260" style="width:100%; height:auto; background:#fff; border-radius: 24px;"></canvas>
+            <div class="flex-between" style="margin: 12px 8px 0 8px;">
+                <span>-10°C</span>
+                <span><span>🔥 loss ──  🔵 HP ── </span></span>
+                <span>+20°C</span>
+            </div>
+
+            <div style="background: #e5f0f7; border-radius: 28px; padding: 1rem; margin: 1.5rem 0;">
+                <div style="font-weight: 700; margin-bottom: 12px;" data-i18n="coverageTitle">📊 Bèta – jaarlijkse dekking (richtwaarden)</div>
+                <div style="display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; font-size: 0.85rem;">
+                    <div>β=1.0 → 100%</div><div>β=0.7 → 95%</div><div>β=0.5 → 92%</div><div>β=0.3 → 88%</div>
+                    <div>β=0.9 → 98%</div><div>β=0.6 → 94%</div><div>β=0.4 → 91%</div><div>β=0.2 → 84%</div>
+                </div>
+                <p id="dekkingText" style="margin-top: 12px; font-weight: 500;">huidige β → geschatte dekking ~--% door warmtepomp</p>
+            </div>
+
+            <div class="info-note" style="background: #dceef7; border-radius: 24px; padding: 10px;" data-i18n-html="uValuesInfoHtml">
+                💡 <strong>U-waarden volledig zelf in te vullen</strong> – gebaseerd op werkelijke constructie. Het totale warmteverlies wordt berekend via:
+                <strong>Q = Σ (U × A) × ΔT + infiltratie × ΔT</strong>. Met ΔT = 31K (ontwerp -10/21°C). Pas β aan om de grootte van de warmtepomp te optimaliseren.
+            </div>
+        </div>
+    </div>
+
+    <!-- ============ BOTTOM INFO ============ -->
+    <div style="margin-top: 32px; background: #fff; border-radius: 32px; padding: 1.2rem 2rem; text-align: center; font-size: 0.9rem;" data-i18n-html="bottomInfoHtml">
+        🔧 <strong>Zelf U-waarden bepalen</strong> – voer de werkelijke U-waarden in van jouw woning (bijv. spouwmuur 0.45 W/m²K, HR++ glas 1.2, vloer 0.35). Het warmteverlies wordt direct herberekend. Gebruik β-factor om de warmtepomp te dimensioneren t.o.v. het maximale verlies.
+    </div>
+</div>
+
+<script>
+/* ============================================================
+   TRANSLATIONS
+   ============================================================ */
+const i18n = {
+    nl: {
+        pageTitle: "U-waarde Bepaler · Warmteverlies & Warmtepomp Optimalisatie",
+        mainTitle: "U-waarde Bepaler · Warmteverlies & Warmtepomp optimalisatie",
+        printBtn: "🖨️ PDF / Afdrukken",
+        badge: "zelf U-waarden invoeren",
+        navElements: "1. Bouwdelen & U-waarden",
+        navAreas: "2. Oppervlaktes",
+        navResults: "3. Warmteverlies",
+        navBeta: "4. β & Warmtepomp",
+        navChart: "5. Grafiek & dekking",
+        sectionElements: "📐 1. Bouwdelen & U-waarden (W/m²K)",
+        labelWall: "🏛️ Gevels / muren",
+        labelWindow: "🪟 Ramen & deuren",
+        labelRoof: "🏠 Dak / plafond",
+        labelFloor: "🌍 Vloer / begane grond",
+        sectionAreas: "📏 2. Oppervlaktes (m²)",
+        labelAreaWall: "Gevels totaal (m²)",
+        labelAreaWindow: "Ramen + deuren (m²)",
+        labelAreaRoof: "Dak / zolder (m²)",
+        labelAreaFloor: "Vloer (m²)",
+        labelInfiltration: "💨 Infiltratie / ventilatieverlies:",
+        tipInfiltration: "Tip: typische infiltratie 0.10 - 0.25 kW/K voor matig tot goede luchtdichtheid.",
+        totalLossLabel: "💥 Totaal transmissie + ventilatie verlies",
+        deltaTLabel: "kW bij ΔT = 31K (binnen 21°C / buiten -10°C)",
+        betaLabel: "🔹 β-factor (Warmtepompvermogen / Warmteverlies)",
+        selectedCapacity: "⚙️ Gekozen WP vermogen:",
+        balancePointLabel: "⚖️ Kantelpunt (buitentemp waar WP = verlies):",
+        balanceNote: "Kantelpunt lager = meer verwarming door warmtepomp, minder back-up.",
+        sectionChart: "📈 Stooklijn & bivalent gedrag",
+        coverageTitle: "📊 Bèta – jaarlijkse dekking (richtwaarden)",
+        uValuesInfoHtml: '💡 <strong>U-waarden volledig zelf in te vullen</strong> – gebaseerd op werkelijke constructie. Het totale warmteverlies wordt berekend via: <strong>Q = Σ (U × A) × ΔT + infiltratie × ΔT</strong>. Met ΔT = 31K (ontwerp -10/21°C). Pas β aan om de grootte van de warmtepomp te optimaliseren.',
+        bottomInfoHtml: '🔧 <strong>Zelf U-waarden bepalen</strong> – voer de werkelijke U-waarden in van jouw woning (bijv. spouwmuur 0.45 W/m²K, HR++ glas 1.2, vloer 0.35). Het warmteverlies wordt direct herberekend. Gebruik β-factor om de warmtepomp te dimensioneren t.o.v. het maximale verlies.',
+        coverageText: (b, d) => `huidige β = ${b} → geschatte jaardekking ~${d}% door warmtepomp (indicatief)`,
+        canvasLossLabel: "warmteverlies (afhankelijk van T buiten)",
+        canvasWpLabel: "WP vermogen (constant)",
+        canvasBalanceLabel: "kantelpunt"
+    },
+    en: {
+        pageTitle: "U-value Calculator · Heat Loss & Heat Pump Optimization",
+        mainTitle: "U-value Calculator · Heat Loss & Heat Pump Optimization",
+        printBtn: "🖨️ PDF / Print",
+        badge: "enter U-values yourself",
+        navElements: "1. Building elements & U-values",
+        navAreas: "2. Areas",
+        navResults: "3. Heat loss",
+        navBeta: "4. β & Heat pump",
+        navChart: "5. Chart & coverage",
+        sectionElements: "📐 1. Building Elements & U-values (W/m²K)",
+        labelWall: "🏛️ Facades / walls",
+        labelWindow: "🪟 Windows & doors",
+        labelRoof: "🏠 Roof / ceiling",
+        labelFloor: "🌍 Floor / ground floor",
+        sectionAreas: "📏 2. Areas (m²)",
+        labelAreaWall: "Total facades (m²)",
+        labelAreaWindow: "Windows + doors (m²)",
+        labelAreaRoof: "Roof / attic (m²)",
+        labelAreaFloor: "Floor (m²)",
+        labelInfiltration: "💨 Infiltration / ventilation loss:",
+        tipInfiltration: "Tip: typical infiltration 0.10 - 0.25 kW/K for moderate to good airtightness.",
+        totalLossLabel: "💥 Total transmission + ventilation loss",
+        deltaTLabel: "kW at ΔT = 31K (inside 21°C / outside -10°C)",
+        betaLabel: "🔹 β-factor (Heat pump capacity / Heat loss)",
+        selectedCapacity: "⚙️ Selected HP capacity:",
+        balancePointLabel: "⚖️ Balance point (outdoor temp where HP = loss):",
+        balanceNote: "Lower balance point = more heating by heat pump, less backup.",
+        sectionChart: "📈 Heating curve & bivalent behavior",
+        coverageTitle: "📊 Beta – annual coverage (indicative)",
+        uValuesInfoHtml: '💡 <strong>U-values fully enterable yourself</strong> – based on actual construction. Total heat loss is calculated via: <strong>Q = Σ (U × A) × ΔT + infiltration × ΔT</strong>. With ΔT = 31K (design -10/21°C). Adjust β to optimize heat pump size.',
+        bottomInfoHtml: '🔧 <strong>Determine U-values yourself</strong> – enter the actual U-values of your home (e.g. cavity wall 0.45 W/m²K, HR++ glass 1.2, floor 0.35). The heat loss is recalculated immediately. Use the β-factor to size the heat pump relative to the maximum loss.',
+        coverageText: (b, d) => `current β = ${b} → estimated annual coverage ~${d}% by heat pump (indicative)`,
+        canvasLossLabel: "heat loss (depends on outdoor T)",
+        canvasWpLabel: "HP capacity (constant)",
+        canvasBalanceLabel: "balance point"
+    }
+};
+
+/* ============================================================
+   DOM REFERENCES
+   ============================================================ */
+const uWall = document.getElementById('u_wall');
+const uWindow = document.getElementById('u_window');
+const uRoof = document.getElementById('u_roof');
+const uFloor = document.getElementById('u_floor');
+const areaWall = document.getElementById('area_wall');
+const areaWindow = document.getElementById('area_window');
+const areaRoof = document.getElementById('area_roof');
+const areaFloor = document.getElementById('area_floor');
+const infiltrationInput = document.getElementById('infiltration');
+const betaSlider = document.getElementById('betaSlider');
+const betaValueDisplay = document.getElementById('betaValueDisplay');
+const wpCapacitySpan = document.getElementById('wpCapacitySpan');
+const totalHeatLossKwSpan = document.getElementById('totalHeatLossKw');
+const balanceTempSpan = document.getElementById('balanceTemp');
+const dekkingText = document.getElementById('dekkingText');
+const canvas = document.getElementById('heatCurveCanvas');
+const ctx = canvas.getContext('2d');
+
+let currentLang = 'nl';
+let currentHeatLoss = 0;
+let currentWpPower = 0;
+
+/* ============================================================
+   LANGUAGE HANDLING
+   ============================================================ */
+function applyLanguage(lang) {
+    currentLang = lang;
+    document.documentElement.lang = lang;
+    document.title = i18n[lang].pageTitle;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang][key] !== undefined) el.textContent = i18n[lang][key];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.getAttribute('data-i18n-html');
+        if (i18n[lang][key] !== undefined) el.innerHTML = i18n[lang][key];
+    });
+    document.querySelectorAll('.lang-switch button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+
+    // Re-run calc so dynamic strings (dekkingText) and canvas legend update
+    updateAll();
+}
+
+document.querySelectorAll('.lang-switch button').forEach(btn => {
+    btn.addEventListener('click', () => applyLanguage(btn.dataset.lang));
+});
+
+/* ============================================================
+   CALCULATION
+   ============================================================ */
+function calculateHeatLoss() {
+    const uWallVal  = parseFloat(uWall.value)   || 0;
+    const uWindowVal= parseFloat(uWindow.value) || 0;
+    const uRoofVal  = parseFloat(uRoof.value)   || 0;
+    const uFloorVal = parseFloat(uFloor.value)  || 0;
+
+    const aWall   = parseFloat(areaWall.value)   || 0;
+    const aWindow = parseFloat(areaWindow.value) || 0;
+    const aRoof   = parseFloat(areaRoof.value)   || 0;
+    const aFloor  = parseFloat(areaFloor.value)  || 0;
+
+    const infiltration = parseFloat(infiltrationInput.value) || 0; // kW/K
+    const deltaT = 31; // 21 - (-10)
+
+    const totalTransWatt =
+        uWallVal * aWall * deltaT +
+        uWindowVal * aWindow * deltaT +
+        uRoofVal * aRoof * deltaT +
+        uFloorVal * aFloor * deltaT;
+
+    const infiltrationKW = infiltration * deltaT;
+    const totalLossKW = (totalTransWatt + infiltrationKW * 1000) / 1000;
+    return Math.round(totalLossKW * 100) / 100;
+}
+
+function getCoveragePercent(beta) {
+    const rounded = Math.round(beta * 10) / 10;
+    const coverageMap = { 1.0:100, 0.9:98, 0.8:97, 0.7:95, 0.6:93, 0.5:91, 0.4:89, 0.3:86, 0.2:82 };
+    return coverageMap[rounded] || 90;
+}
+
+function updateAll() {
+    const heatLossKW = calculateHeatLoss();
+    currentHeatLoss = heatLossKW;
+    totalHeatLossKwSpan.innerText = heatLossKW.toFixed(2);
+
+    const beta = parseFloat(betaSlider.value);
+    betaValueDisplay.innerText = beta.toFixed(2);
+
+    let wpKW = Math.round(heatLossKW * beta * 100) / 100;
+    currentWpPower = wpKW;
+    wpCapacitySpan.innerText = wpKW.toFixed(2);
+
+    let balanceTemp = heatLossKW > 0.01 ? 21 - (wpKW / heatLossKW) * 31 : 20;
+    balanceTemp = Math.max(-15, Math.min(20, balanceTemp));
+    balanceTempSpan.innerText = balanceTemp.toFixed(1);
+
+    const dekking = getCoveragePercent(beta);
+    dekkingText.innerText = i18n[currentLang].coverageText(beta.toFixed(2), dekking);
+
+    drawHeatingCurve(heatLossKW, wpKW, balanceTemp);
+}
+
+/* ============================================================
+   CANVAS CHART
+   ============================================================ */
+function drawHeatingCurve(heatLossKW, wpKW, balancePoint) {
+    if (!ctx) return;
+    const w = canvas.width, h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const padLeft = 48, padRight = 28, padTop = 28, padBottom = 38;
+    const graphW = w - padLeft - padRight;
+    const graphH = h - padTop - padBottom;
+    const Tmin = -10, Tmax = 20;
+
+    let maxPower = Math.max(heatLossKW, wpKW, 2.0) * 1.15;
+    maxPower = Math.ceil(maxPower * 10) / 10;
+
+    const mapX = t => padLeft + ((t - Tmin) / (Tmax - Tmin)) * graphW;
+    const mapY = p => padTop + graphH - (p / maxPower) * graphH;
+
+    // grid
+    ctx.save();
+    ctx.strokeStyle = "#e0ecf4";
+    ctx.lineWidth = 0.8;
+    for (let i = 0; i <= 4; i++) {
+        const yGrid = mapY(i * (maxPower / 4));
+        ctx.beginPath(); ctx.moveTo(padLeft, yGrid); ctx.lineTo(padLeft + graphW, yGrid); ctx.stroke();
+    }
+
+    // axes
+    ctx.strokeStyle = "#8ba9c2";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(padLeft, padTop);
+    ctx.lineTo(padLeft, padTop + graphH);
+    ctx.lineTo(padLeft + graphW, padTop + graphH);
+    ctx.stroke();
+
+    // axis labels
+    ctx.fillStyle = "#1f5a74";
+    ctx.font = "10px 'Segoe UI'";
+    for (let t = -10; t <= 20; t += 5) {
+        ctx.fillText(t + "°C", mapX(t) - 8, padTop + graphH + 18);
+    }
+    for (let p = 0; p <= maxPower + 0.1; p += (maxPower / 5)) {
+        const y = mapY(p);
+        if (y >= padTop && y <= padTop + graphH) ctx.fillText(p.toFixed(1) + "kW", padLeft - 34, y + 3);
+    }
+
+    // heat-loss line
+    ctx.beginPath();
+    ctx.setLineDash([8, 6]);
+    ctx.strokeStyle = "#1f6d9e";
+    ctx.lineWidth = 2.8;
+    let first = true;
+    for (let temp = -10; temp <= 20; temp += 0.5) {
+        const loss = Math.max(0, heatLossKW * ((21 - temp) / 31));
+        const x = mapX(temp), y = mapY(loss);
+        if (first) { ctx.moveTo(x, y); first = false; } else { ctx.lineTo(x, y); }
+    }
+    ctx.stroke();
+
+    // WP constant line
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "#c9571b";
+    ctx.lineWidth = 2.8;
+    const yWp = mapY(wpKW);
+    ctx.beginPath();
+    ctx.moveTo(mapX(-10), yWp);
+    ctx.lineTo(mapX(20), yWp);
+    ctx.stroke();
+
+    // balance point marker
+    if (balancePoint >= -10 && balancePoint <= 20) {
+        const xBal = mapX(balancePoint), yBal = mapY(wpKW);
+        ctx.beginPath();
+        ctx.arc(xBal, yBal, 7, 0, 2 * Math.PI);
+        ctx.fillStyle = "#ff9f4a";
+        ctx.fill();
+        ctx.fillStyle = "white";
+        ctx.font = "bold 12px sans-serif";
+        ctx.fillText("⚡", xBal - 5, yBal + 4);
+        ctx.fillStyle = "#cc6d2c";
+        ctx.font = "9px sans-serif";
+        ctx.fillText(i18n[currentLang].canvasBalanceLabel, xBal - 28, yBal - 8);
+    }
+
+    // legend (translated)
+    ctx.fillStyle = "#1f6d9e";
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillText(i18n[currentLang].canvasLossLabel, padLeft + 30, padTop + 15);
+    ctx.fillStyle = "#c9571b";
+    ctx.fillText(i18n[currentLang].canvasWpLabel, padLeft + 30, padTop + 30);
+
+    ctx.restore();
+}
+
+/* ============================================================
+   EVENT LISTENERS
+   ============================================================ */
+const inputs = [uWall, uWindow, uRoof, uFloor, areaWall, areaWindow, areaRoof, areaFloor, infiltrationInput, betaSlider];
+inputs.forEach(inp => {
+    inp.addEventListener('input', updateAll);
+    inp.addEventListener('change', updateAll);
+});
+
+/* ============================================================
+   CANVAS RESIZE
+   ============================================================ */
+function resizeCanvas() {
+    let width = canvas.clientWidth;
+    if (width < 300) width = 400;
+    canvas.width = width;
+    canvas.height = Math.min(260, Math.floor(width * 0.5));
+    updateAll();
+}
+window.addEventListener('resize', () => setTimeout(resizeCanvas, 100));
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function setDefaults() {
+    uWall.value = "0.45";
+    uWindow.value = "1.6";
+    uRoof.value = "0.35";
+    uFloor.value = "0.50";
+    areaWall.value = "120";
+    areaWindow.value = "28";
+    areaRoof.value = "85";
+    areaFloor.value = "85";
+    infiltrationInput.value = "0.15";
+    betaSlider.value = "0.45";
+}
+
+setDefaults();
+// Restore saved language preference if available
+const savedLang = (typeof localStorage !== 'undefined' && localStorage.getItem('uwLang')) || 'nl';
+applyLanguage(savedLang);
+resizeCanvas();
+
+// Persist language choice
+document.querySelectorAll('.lang-switch button').forEach(btn => {
+    btn.addEventListener('click', () => {
+        try { localStorage.setItem('uwLang', btn.dataset.lang); } catch (e) {}
+    });
+});
+</script>
+</body>
+</html>
